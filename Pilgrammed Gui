@@ -769,11 +769,7 @@ for i, tab in ipairs(tabs) do
     local btn = Instance.new("TextButton", tabPanel)
     btn.LayoutOrder = i
     btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    if i == #tabs then
-        btn.Text = tab.icon .. " " .. tab.name
-    else
-        btn.Text = ""
-    end
+    btn.Text = tab.icon .. " " .. tab.name
     btn.Font = Enum.Font.Gotham
     btn.TextSize = 16
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
