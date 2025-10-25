@@ -609,162 +609,129 @@ if settingsTab then
 end
 
 -- 🎣 Fishing Module
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+
+local player = Players.LocalPlayer
+
+-- Создаём вкладку (6‑я по счёту)
 local fishingTab = newTab("Fishing", "🎣", 6)
 
--- Контейнер
-local container = Instance.new("Frame", fishingTab)
-container.Size = UDim2.new(0, 340, 0, 240)
-container.Position = UDim2.new(0, 20, 0, 20)
-container.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-container.BorderSizePixel = 0
-Instance.new("UICorner", container).CornerRadius = UDim.new(0, 6)
+-- Заголовок
+local title = Instance.new("TextLabel", fishingTab)
+title.Text = "🎣 Auto Fishing"
+title.Size = UDim2.new(1, -20, 0, 40)
+title.BackgroundTransparency = 1
+title.TextColor3 = Color3.new(1, 1, 1)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 20
+title.LayoutOrder = 1
 
 -- Кнопка включения авто-рыбалки
-local toggleButton = Instance.new("TextButton", container)
-toggleButton.Size = UDim2.new(1, -20, 0, 40)
-toggleButton.Position = UDim2.new(0, 10, 0, 10)
+local toggleButton = Instance.new("TextButton", fishingTab)
 toggleButton.Text = "Включить авто-рыбалку"
+toggleButton.Size = UDim2.new(1, -20, 0, 40)
 toggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 toggleButton.TextColor3 = Color3.new(1, 1, 1)
 toggleButton.Font = Enum.Font.GothamBold
 toggleButton.TextSize = 16
-Instance.new("UICorner", toggleButton).CornerRadius = UDim.new(0, 4)
+toggleButton.LayoutOrder = 2
+Instance.new("UICorner", toggleButton).CornerRadius = UDim.new(0, 6)
 
 -- Статус
-local statusLabel = Instance.new("TextLabel", container)
-statusLabel.Size = UDim2.new(1, -20, 0, 20)
-statusLabel.Position = UDim2.new(0, 10, 0, 60)
+local statusLabel = Instance.new("TextLabel", fishingTab)
 statusLabel.Text = "Статус: 🔴 Выключено"
+statusLabel.Size = UDim2.new(1, -20, 0, 20)
 statusLabel.BackgroundTransparency = 1
 statusLabel.TextColor3 = Color3.new(1, 1, 1)
 statusLabel.Font = Enum.Font.Gotham
 statusLabel.TextSize = 14
+statusLabel.LayoutOrder = 3
 
 -- Поклёвка
-local biteLabel = Instance.new("TextLabel", container)
-biteLabel.Size = UDim2.new(1, -20, 0, 20)
-biteLabel.Position = UDim2.new(0, 10, 0, 85)
+local biteLabel = Instance.new("TextLabel", fishingTab)
 biteLabel.Text = "Поклёвка: ⚪ Нет"
+biteLabel.Size = UDim2.new(1, -20, 0, 20)
 biteLabel.BackgroundTransparency = 1
 biteLabel.TextColor3 = Color3.new(1, 1, 1)
 biteLabel.Font = Enum.Font.Gotham
 biteLabel.TextSize = 14
+biteLabel.LayoutOrder = 4
 
--- Выбор удочки
-local rodLabel = Instance.new("TextLabel", container)
-rodLabel.Size = UDim2.new(0, 120, 0, 20)
-rodLabel.Position = UDim2.new(0, 10, 0, 115)
-rodLabel.BackgroundTransparency = 1
-rodLabel.Text = "Удочка:"
-rodLabel.Font = Enum.Font.Gotham
-rodLabel.TextSize = 14
-rodLabel.TextColor3 = Color3.fromRGB(220,220,220)
-rodLabel.TextXAlignment = Enum.TextXAlignment.Left
-
-local rodButton = Instance.new("TextButton", container)
-rodButton.Size = UDim2.new(0, 200, 0, 28)
-rodButton.Position = UDim2.new(0, 130, 0, 111)
-rodButton.Text = shared.SelectedRod or "Fishing Rod"
-rodButton.Font = Enum.Font.Gotham
-rodButton.TextSize = 14
-rodButton.BackgroundColor3 = Color3.fromRGB(60,60,60)
-rodButton.TextColor3 = Color3.fromRGB(255,255,255)
-rodButton.BorderSizePixel = 0
-Instance.new("UICorner", rodButton).CornerRadius = UDim.new(0,4)
-
--- Dropdown для выбора удочки
-local dropdown = Instance.new("Frame", container)
-dropdown.Size = UDim2.new(0, 200, 0, 0)
-dropdown.Position = UDim2.new(0, 130, 0, 141)
-dropdown.BackgroundColor3 = Color3.fromRGB(50,50,50)
-dropdown.BorderSizePixel = 0
-Instance.new("UICorner", dropdown).CornerRadius = UDim.new(0,4)
-dropdown.ClipsDescendants = true
-dropdown.Visible = false
-
-local rodOptions = { "Fishing Rod", "Advenced Rod", "Rod of Kings" }
-for idx, name in ipairs(rodOptions) do
-    local opt = Instance.new("TextButton", dropdown)
-    opt.Size = UDim2.new(1, 0, 0, 28)
-    opt.Position = UDim2.new(0, 0, 0, (idx-1)*28)
-    opt.Text = name
-    opt.Font = Enum.Font.Gotham
-    opt.TextSize = 14
-    opt.BackgroundColor3 = Color3.fromRGB(60,60,60)
-    opt.TextColor3 = Color3.fromRGB(255,255,255)
-    opt.BorderSizePixel = 0
-    Instance.new("UICorner", opt).CornerRadius = UDim.new(0,4)
-    opt.MouseButton1Click:Connect(function()
-        shared.SelectedRod = name
-        rodButton.Text = name
-        dropdown.Visible = false
-    end)
+-- 🖱 Клик мыши
+local function getMousePos()
+    local pos = UserInputService:GetMouseLocation()
+    return pos.X, pos.Y
 end
 
-rodButton.MouseButton1Click:Connect(function()
-    dropdown.Visible = not dropdown.Visible
-    if dropdown.Visible then
-        dropdown.Size = UDim2.new(0,200,0,#rodOptions * 28)
-    else
-        dropdown.Size = UDim2.new(0,200,0,0)
-    end
-end)
+local function click()
+    local x, y = getMousePos()
+    VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 0)
+    task.wait(0.03)
+    VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 0)
+end
 
--- Авто-экипировка
-local equipLabel = Instance.new("TextLabel", container)
-equipLabel.Size = UDim2.new(0, 160, 0, 20)
-equipLabel.Position = UDim2.new(0, 10, 0, 160)
-equipLabel.BackgroundTransparency = 1
-equipLabel.Text = "Авто-экипировка удочки"
-equipLabel.Font = Enum.Font.Gotham
-equipLabel.TextSize = 14
-equipLabel.TextColor3 = Color3.fromRGB(220,220,220)
-equipLabel.TextXAlignment = Enum.TextXAlignment.Left
-
-local equipToggle = Instance.new("TextButton", container)
-equipToggle.Size = UDim2.new(0, 120, 0, 24)
-equipToggle.Position = UDim2.new(0, 170, 0, 156)
-equipToggle.Text = "OFF"
-equipToggle.Font = Enum.Font.GothamBold
-equipToggle.TextSize = 14
-equipToggle.BackgroundColor3 = Color3.fromRGB(180,60,60)
-equipToggle.TextColor3 = Color3.fromRGB(255,255,255)
-equipToggle.BorderSizePixel = 0
-Instance.new("UICorner", equipToggle).CornerRadius = UDim.new(0,4)
-
--- Логика
+-- 🔁 Логика авто-рыбалки
 local autoFishing = false
-local autoEquipRod = false
 
 toggleButton.MouseButton1Click:Connect(function()
     autoFishing = not autoFishing
-    shared.AutoFishing = autoFishing
     toggleButton.Text = autoFishing and "Выключить авто-рыбалку" or "Включить авто-рыбалку"
+    statusLabel.Text = autoFishing and "Статус: 🟢 Работает" or "Статус: 🔴 Выключено"
 end)
 
-equipToggle.MouseButton1Click:Connect(function()
-    autoEquipRod = not autoEquipRod
-    shared.AutoEquipRod = autoEquipRod
-    equipToggle.Text = autoEquipRod and "ON" or "OFF"
-    equipToggle.BackgroundColor3 = autoEquipRod and Color3.fromRGB(40,180,80) or Color3.fromRGB(180,60,60)
-end)
-
--- Цикл авто-рыбалки
 task.spawn(function()
     while true do
         if autoFishing then
             statusLabel.Text = "Статус: 🟢 Работает"
             biteLabel.Text = "Поклёвка: ⚪ Нет"
-            -- здесь полный fishing-цикл из oldpilgrammed.lua:
-            -- 1. проверка удочки
-            -- 2. клик мышкой (VirtualInputManager)
-            -- 3. поиск Bobber
-            -- 4. отслеживание движения поплавка
-            -- 5. клик при поклёвке
+            click()
+
+            -- Ждём Bobber
+            local bobber = nil
+            local timeout, t = 5, 0
+            repeat
+                bobber = workspace:FindFirstChild("Bobber")
+                task.wait(0.1)
+                t += 0.1
+            until bobber or t >= timeout
+
+            if bobber then
+                local lastCenter = bobber.AssemblyCenterOfMass
+                local noMoveTime = 0
+                local heartbeatConn
+                heartbeatConn = RunService.Heartbeat:Connect(function(dt)
+                    if not bobber or not bobber.Parent then return end
+                    local newCenter = bobber.AssemblyCenterOfMass
+                    local delta = (newCenter - lastCenter).Magnitude
+
+                    if delta > 0.01 then
+                        biteLabel.Text = "Поклёвка: ⚡ Есть!"
+                        click()
+                        noMoveTime = 0
+                    else
+                        biteLabel.Text = "Поклёвка: ⚪ Нет"
+                        noMoveTime += dt
+                    end
+
+                    if noMoveTime >= 10 then
+                        click()
+                        noMoveTime = 0
+                    end
+
+                    lastCenter = newCenter
+                end)
+
+                repeat task.wait(0.2) until not bobber.Parent
+                if heartbeatConn then heartbeatConn:Disconnect() end
+            else
+                task.wait(1)
+            end
         else
-            statusLabel.Text = "Статус: 🔴 Выключено"
             biteLabel.Text = "Поклёвка: ⚪ Нет"
+            task.wait(0.5)
         end
-        task.wait(0.5)
     end
 end)
