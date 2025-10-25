@@ -2,22 +2,14 @@ local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 local RunService = game:GetService("RunService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
 local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
-local backpack = player:WaitForChild("Backpack")
 
 local zoneGap, titleHeight, bottomHeight = 10, 40, 20
 local tabPanelWidth = 120
 
--- Fishing variables
-local autoFishing = false
-local autoEquipRod = false
-shared.SpeedControl = { active = false, value = 32 }
-shared.AutoFishing = false
+-- Shared variables
 shared.PlayerName = player.Name
-shared.SelectedRod = "Fishing Rod"
-shared.AutoEquipRod = false
 
 -- Color System
 local Colors = {
@@ -53,7 +45,7 @@ end
 
 local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
 gui.ResetOnSpawn = false
-gui.Name = "Gui script by Georgiy/8"
+gui.Name = "Pilgrammed Script by Georgiy/8"
 
 local mainFrame = Instance.new("Frame", gui)
 mainFrame.Size = UDim2.new(0, 500, 0, 400)
@@ -62,7 +54,7 @@ mainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 mainFrame.BorderSizePixel = 0
 Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 6)
 
--- A — Заголовок
+-- Title Bar (Zone A)
 local titleBar = Instance.new("Frame", mainFrame)
 titleBar.Size = UDim2.new(1, -2 * zoneGap, 0, titleHeight)
 titleBar.Position = UDim2.new(0, zoneGap, 0, zoneGap)
@@ -81,17 +73,7 @@ titleLabel.TextSize = 18
 titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 
--- Список вкладок
-local tabs = {
-    { name = "Main", icon = "🧭" },
-    { name = "Movement", icon = "🏃" },
-    { name = "ESP", icon = "👁️" },
-    { name = "Float", icon = "🪶" },
-    { name = "Fishing", icon = "🎣" },
-    { name = "Settings", icon = "⚙️" },
-}
-
--- B — Вкладки
+-- Tab Panel (Zone B)
 local tabPanel = Instance.new("ScrollingFrame", mainFrame)
 tabPanel.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 tabPanel.BorderSizePixel = 0
@@ -112,7 +94,7 @@ layout.Padding = UDim.new(0, 6)
 layout.SortOrder = Enum.SortOrder.LayoutOrder
 layout.VerticalAlignment = Enum.VerticalAlignment.Top
 
--- D — Контент
+-- Content Zone (Zone D)
 local contentZone = Instance.new("ScrollingFrame", mainFrame)
 contentZone.Name = "ContentZone"
 contentZone.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
@@ -130,7 +112,7 @@ contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
 local contentConstraint = Instance.new("UISizeConstraint", contentZone)
 contentConstraint.MaxSize = Vector2.new(2000, 2000)
 
--- C — Нижняя панель
+-- Bottom Bar (Zone C)
 local bottomBar = Instance.new("Frame", mainFrame)
 bottomBar.Size = UDim2.new(1, -2 * zoneGap, 0, bottomHeight)
 bottomBar.Position = UDim2.new(0, zoneGap, 1, -(bottomHeight + zoneGap))
@@ -138,7 +120,7 @@ bottomBar.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 bottomBar.BorderSizePixel = 0
 Instance.new("UICorner", bottomBar).CornerRadius = UDim.new(0, 6)
 
--- Функция применения цветов
+-- Color application system
 local guiElements = {}
 local tabButtons = {}
 
@@ -200,13 +182,14 @@ local function applyColors()
     end
 end
 
+-- Register elements for coloring
 table.insert(guiElements, mainFrame)
 table.insert(guiElements, titleBar)
 table.insert(guiElements, tabPanel)
 table.insert(guiElements, contentZone)
 table.insert(guiElements, bottomBar)
 
--- Функция обновления размеров
+-- Layout update function
 local function updateLayout()
     RunService.Heartbeat:Wait()
 
@@ -238,7 +221,7 @@ end
 mainFrame:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateLayout)
 tabPanel:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateLayout)
 
--- Перетаскивание
+-- Dragging
 local dragging, dragStart, startPos
 titleBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -257,7 +240,7 @@ UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
 end)
 
--- Ресайз
+-- Resizing
 local resizeHandle = Instance.new("Frame", bottomBar)
 resizeHandle.Size = UDim2.new(0, 20, 0, 20)
 resizeHandle.Position = UDim2.new(1, -20, 0, 0)
@@ -282,7 +265,7 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
--- Восстановление
+-- Restore GUI
 local restoreGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
 restoreGui.ResetOnSpawn = false
 restoreGui.Name = "RestoreButtonGui"
@@ -306,7 +289,7 @@ restoreButton.MouseButton1Click:Connect(function()
     restoreGui.Enabled = false
 end)
 
--- Кнопки управления окном
+-- Window control buttons
 local isMaximized = false
 local prevSize = mainFrame.Size
 local prevPos = mainFrame.Position
@@ -349,275 +332,102 @@ createTitleButton("X", 30, function()
     restoreGui:Destroy()
 end)
 
--- Fishing helper
-local function tryEquipRod(rodName)
-    if not rodName then return false end
-    if player.Character then
-        local inChar = player.Character:FindFirstChild(rodName)
-        if inChar and inChar:IsA("Tool") then return true end
-    end
-    local tool = backpack:FindFirstChild(rodName)
-    if tool and tool:IsA("Tool") then
-        tool.Parent = player.Character
-        return true
-    end
-    local found = false
-    local conn
-    conn = backpack.ChildAdded:Connect(function(child)
-        if child.Name == rodName and child:IsA("Tool") then
-            child.Parent = player.Character
-            found = true
-            if conn then conn:Disconnect() end
-        end
-    end)
-    local t = 0
-    while t < 3 and not found do
-        task.wait(0.1)
-        t = t + 0.1
-    end
-    if conn then conn:Disconnect() end
-    return found
-end
-
--- Функция создания Fishing контента
-local function createFishingContent()
-    local container = Instance.new("Frame", contentZone)
-    container.Size = UDim2.new(1, -20, 0, 240)
-    container.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    container.BorderSizePixel = 0
-    container.LayoutOrder = 1
-    Instance.new("UICorner", container).CornerRadius = UDim.new(0, 6)
-
-    local toggleButton = Instance.new("TextButton", container)
-    toggleButton.Size = UDim2.new(1, -20, 0, 40)
-    toggleButton.Position = UDim2.new(0, 10, 0, 10)
-    toggleButton.Text = "Включить авто-рыбалку"
-    toggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    toggleButton.TextColor3 = Color3.new(1, 1, 1)
-    toggleButton.Font = Enum.Font.GothamBold
-    toggleButton.TextSize = 16
-    Instance.new("UICorner", toggleButton).CornerRadius = UDim.new(0, 4)
-
-    local statusLabel = Instance.new("TextLabel", container)
-    statusLabel.Size = UDim2.new(1, -20, 0, 20)
-    statusLabel.Position = UDim2.new(0, 10, 0, 60)
-    statusLabel.Text = "Статус: 🔴 Выключено"
-    statusLabel.BackgroundTransparency = 1
-    statusLabel.TextColor3 = Color3.new(1, 1, 1)
-    statusLabel.Font = Enum.Font.Gotham
-    statusLabel.TextSize = 14
-
-    local biteLabel = Instance.new("TextLabel", container)
-    biteLabel.Size = UDim2.new(1, -20, 0, 20)
-    biteLabel.Position = UDim2.new(0, 10, 0, 85)
-    biteLabel.Text = "Поклёвка: ⚪ Нет"
-    biteLabel.BackgroundTransparency = 1
-    biteLabel.TextColor3 = Color3.new(1, 1, 1)
-    biteLabel.Font = Enum.Font.Gotham
-    biteLabel.TextSize = 14
-
-    local rodLabel = Instance.new("TextLabel", container)
-    rodLabel.Size = UDim2.new(0, 120, 0, 20)
-    rodLabel.Position = UDim2.new(0, 10, 0, 115)
-    rodLabel.BackgroundTransparency = 1
-    rodLabel.Text = "Удочка:"
-    rodLabel.Font = Enum.Font.Gotham
-    rodLabel.TextSize = 14
-    rodLabel.TextColor3 = Color3.fromRGB(220,220,220)
-    rodLabel.TextXAlignment = Enum.TextXAlignment.Left
-
-    local rodButton = Instance.new("TextButton", container)
-    rodButton.Size = UDim2.new(0, 200, 0, 28)
-    rodButton.Position = UDim2.new(0, 130, 0, 111)
-    rodButton.Text = shared.SelectedRod
-    rodButton.Font = Enum.Font.Gotham
-    rodButton.TextSize = 14
-    rodButton.BackgroundColor3 = Color3.fromRGB(60,60,60)
-    rodButton.TextColor3 = Color3.fromRGB(255,255,255)
-    rodButton.BorderSizePixel = 0
-    Instance.new("UICorner", rodButton).CornerRadius = UDim.new(0,4)
-
-    local dropdown = Instance.new("Frame", container)
-    dropdown.Size = UDim2.new(0, 200, 0, 0)
-    dropdown.Position = UDim2.new(0, 130, 0, 141)
-    dropdown.BackgroundColor3 = Color3.fromRGB(50,50,50)
-    dropdown.BorderSizePixel = 0
-    Instance.new("UICorner", dropdown).CornerRadius = UDim.new(0,4)
-    dropdown.ClipsDescendants = true
-    dropdown.Visible = false
-
-    local rodOptions = { "Fishing Rod", "Advenced Rod", "Rod of Kings" }
-
-    for idx, name in ipairs(rodOptions) do
-        local opt = Instance.new("TextButton", dropdown)
-        opt.Size = UDim2.new(1, 0, 0, 28)
-        opt.Position = UDim2.new(0, 0, 0, (idx-1)*28)
-        opt.Text = name
-        opt.Font = Enum.Font.Gotham
-        opt.TextSize = 14
-        opt.BackgroundColor3 = Color3.fromRGB(60,60,60)
-        opt.TextColor3 = Color3.fromRGB(255,255,255)
-        opt.BorderSizePixel = 0
-        Instance.new("UICorner", opt).CornerRadius = UDim.new(0,4)
-
-        opt.MouseButton1Click:Connect(function()
-            shared.SelectedRod = name
-            rodButton.Text = name
-            local tween = TweenService:Create(dropdown, TweenInfo.new(0.15), {Size = UDim2.new(0,200,0,0)})
-            tween:Play()
-            tween.Completed:Wait()
-            dropdown.Visible = false
-        end)
-    end
-
-    rodButton.MouseButton1Click:Connect(function()
-        if dropdown.Visible then
-            local tween = TweenService:Create(dropdown, TweenInfo.new(0.12), {Size = UDim2.new(0,200,0,0)})
-            tween:Play()
-            tween.Completed:Wait()
-            dropdown.Visible = false
-        else
-            dropdown.Visible = true
-            local targetSize = UDim2.new(0,200,0,#rodOptions * 28)
-            local tween = TweenService:Create(dropdown, TweenInfo.new(0.12), {Size = targetSize})
-            tween:Play()
-        end
-    end)
-
-    local equipLabel = Instance.new("TextLabel", container)
-    equipLabel.Size = UDim2.new(0, 160, 0, 20)
-    equipLabel.Position = UDim2.new(0, 10, 0, 160)
-    equipLabel.BackgroundTransparency = 1
-    equipLabel.Text = "Авто-экипировка удочки"
-    equipLabel.Font = Enum.Font.Gotham
-    equipLabel.TextSize = 14
-    equipLabel.TextColor3 = Color3.fromRGB(220,220,220)
-    equipLabel.TextXAlignment = Enum.TextXAlignment.Left
-
-    local equipToggle = Instance.new("TextButton", container)
-    equipToggle.Size = UDim2.new(0, 120, 0, 24)
-    equipToggle.Position = UDim2.new(0, 170, 0, 156)
-    equipToggle.Text = "OFF"
-    equipToggle.Font = Enum.Font.GothamBold
-    equipToggle.TextSize = 14
-    equipToggle.BackgroundColor3 = Color3.fromRGB(180,60,60)
-    equipToggle.TextColor3 = Color3.fromRGB(255,255,255)
-    equipToggle.BorderSizePixel = 0
-    Instance.new("UICorner", equipToggle).CornerRadius = UDim.new(0,4)
-
-    local function playEquipPulse(success)
-        local toColor = success and Color3.fromRGB(40,180,80) or Color3.fromRGB(200,60,60)
-        local tweenIn = TweenService:Create(equipToggle, TweenInfo.new(0.12), {BackgroundColor3 = toColor})
-        local tweenOut = TweenService:Create(equipToggle, TweenInfo.new(0.35), {BackgroundColor3 = Color3.fromRGB(60,60,60)})
-        tweenIn:Play()
-        tweenIn.Completed:Wait()
-        tweenOut:Play()
-    end
-
-    equipToggle.MouseButton1Click:Connect(function()
-        autoEquipRod = not autoEquipRod
-        shared.AutoEquipRod = autoEquipRod
-        equipToggle.Text = autoEquipRod and "ON" or "OFF"
-        equipToggle.BackgroundColor3 = autoEquipRod and Color3.fromRGB(40,180,80) or Color3.fromRGB(180,60,60)
-        if autoEquipRod then
-            local ok = tryEquipRod(shared.SelectedRod)
-            playEquipPulse(ok)
-        end
-    end)
-
-    toggleButton.MouseButton1Click:Connect(function()
-        autoFishing = not autoFishing
-        shared.AutoFishing = autoFishing
-        toggleButton.Text = autoFishing and "Выключить авто-рыбалку" or "Включить авто-рыбалку"
-    end)
-
-    task.spawn(function()
-        while true do
-            if autoFishing then
-                statusLabel.Text = "Статус: 🟢 Работает"
-                biteLabel.Text = "Поклёвка: ⚪ Нет"
-
-                if autoEquipRod then
-                    local equipped = false
-                    if player.Character and player.Character:FindFirstChild(shared.SelectedRod) then
-                        equipped = true
-                    end
-                    if not equipped then
-                        local ok = tryEquipRod(shared.SelectedRod)
-                        if ok then playEquipPulse(true) end
-                    end
-                end
-
-                local mx, my = UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y
-                VirtualInputManager:SendMouseButtonEvent(mx, my, 0, true, game, 0)
-                task.wait(0.03)
-                VirtualInputManager:SendMouseButtonEvent(mx, my, 0, false, game, 0)
-
-                local bobber = nil
-                local timeout = 5
-                local t = 0
-                repeat
-                    bobber = workspace:FindFirstChild("Bobber")
-                    task.wait(0.1)
-                    t = t + 0.1
-                until bobber or t >= timeout
-
-                if not bobber then
-                    task.wait(1)
-                    continue
-                end
-
-                local lastCenter = bobber.AssemblyCenterOfMass
-                local noMoveTime = 0
-                local heartbeatConn
-
-                heartbeatConn = RunService.Heartbeat:Connect(function(dt)
-                    if not bobber or not bobber.Parent then return end
-                    local newCenter = bobber.AssemblyCenterOfMass
-                    local delta = (newCenter - lastCenter).Magnitude
-
-                    if delta > 0.01 then
-                        biteLabel.Text = "Поклёвка: ⚡ Есть!"
-                        local mx2, my2 = UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y
-                        VirtualInputManager:SendMouseButtonEvent(mx2, my2, 0, true, game, 0)
-                        task.wait(0.03)
-                        VirtualInputManager:SendMouseButtonEvent(mx2, my2, 0, false, game, 0)
-                        noMoveTime = 0
-                    else
-                        biteLabel.Text = "Поклёвка: ⚪ Нет"
-                        noMoveTime = noMoveTime + dt
-                    end
-
-                    if noMoveTime >= 10 then
-                        local mx3, my3 = UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y
-                        VirtualInputManager:SendMouseButtonEvent(mx3, my3, 0, true, game, 0)
-                        task.wait(0.03)
-                        VirtualInputManager:SendMouseButtonEvent(mx3, my3, 0, false, game, 0)
-                        noMoveTime = 0
-                    end
-
-                    lastCenter = newCenter
-                end)
-
-                repeat task.wait(0.2) until not bobber.Parent
-                if heartbeatConn then heartbeatConn:Disconnect() end
-            else
-                statusLabel.Text = "Статус: 🔴 Выключено"
-				biteLabel.Text = "Поклёвка: ⚪ Нет"
-                task.wait(0.5)
+-- Clear content zone helper
+local function clearContentZone()
+    for _, child in ipairs(contentZone:GetChildren()) do
+        if child ~= contentLayout and child ~= contentConstraint then
+            if child:IsA("GuiObject") then
+                child.Visible = false
             end
         end
-    end)
+    end
 end
 
--- Функция создания Settings контента
-local function createSettingsContent()
-    local padding = Instance.new("UIPadding", contentZone)
+-- Tab system
+local tabOrder = 0
+local tabs = {}
+local settingsTab = nil
+local settingsOrder = 9999
+
+-- Функция создания новой вкладки (position: 1-10, Settings всегда последняя)
+function newTab(name, icon, position)
+    -- Если это Settings, сохраняем особый порядок
+    local currentOrder
+    if name == "Settings" then
+        currentOrder = settingsOrder
+    else
+        -- Если указана позиция (1-10), используем её, иначе авто-инкремент
+        if position and position >= 1 and position <= 10 then
+            currentOrder = position
+        else
+            tabOrder = tabOrder + 1
+            currentOrder = tabOrder
+        end
+    end
+    
+    local tabData = {
+        name = name,
+        icon = icon,
+        order = currentOrder,
+        container = nil,
+        button = nil
+    }
+    
+    -- Создаём кнопку вкладки
+    local btn = Instance.new("TextButton", tabPanel)
+    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    btn.Text = icon .. " " .. name
+    btn.Font = Enum.Font.Gotham
+    btn.TextSize = 16
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.BorderSizePixel = 0
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
+    btn.Size = UDim2.new(1, 0, 0, 28)
+    btn.LayoutOrder = currentOrder
+    
+    tabData.button = btn
+    table.insert(tabButtons, btn)
+    
+    -- Создаём контейнер для контента
+    local container = Instance.new("Frame", contentZone)
+    container.Size = UDim2.new(1, 0, 0, 0)
+    container.BackgroundTransparency = 1
+    container.LayoutOrder = 1
+    container.Visible = false
+    container.AutomaticSize = Enum.AutomaticSize.Y
+    
+    local containerLayout = Instance.new("UIListLayout", container)
+    containerLayout.Padding = UDim.new(0, 10)
+    containerLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    
+    tabData.container = container
+    
+    -- Если это Settings, сохраняем ссылку
+    if name == "Settings" then
+        settingsTab = tabData
+    end
+    
+    -- Обработчик клика
+    btn.MouseButton1Click:Connect(function()
+        clearContentZone()
+        container.Visible = true
+        contentZone.CanvasSize = UDim2.new(0, 0, 0, contentLayout.AbsoluteContentSize.Y + 20)
+    end)
+    
+    table.insert(tabs, tabData)
+    
+    -- Возвращаем контейнер для добавления контента
+    return container
+end
+
+-- Settings tab content creator
+local function createSettingsContent(container)
+    local padding = Instance.new("UIPadding", container)
     padding.PaddingLeft = UDim.new(0, 10)
     padding.PaddingRight = UDim.new(0, 10)
     padding.PaddingTop = UDim.new(0, 10)
     
-    local titleLabel = Instance.new("TextLabel", contentZone)
+    local titleLabel = Instance.new("TextLabel", container)
     titleLabel.Size = UDim2.new(1, -20, 0, 30)
     titleLabel.BackgroundTransparency = 1
     titleLabel.Text = "🎨 Color Settings"
@@ -627,7 +437,7 @@ local function createSettingsContent()
     titleLabel.TextXAlignment = Enum.TextXAlignment.Left
     titleLabel.LayoutOrder = 1
     
-    local color1Frame = Instance.new("Frame", contentZone)
+    local color1Frame = Instance.new("Frame", container)
     color1Frame.Size = UDim2.new(1, -20, 0, 200)
     color1Frame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     color1Frame.BorderSizePixel = 0
@@ -653,7 +463,7 @@ local function createSettingsContent()
     gridLayout1.CellSize = UDim2.new(0, 45, 0, 45)
     gridLayout1.CellPadding = UDim2.new(0, 5, 0, 5)
     
-    local color2Frame = Instance.new("Frame", contentZone)
+    local color2Frame = Instance.new("Frame", container)
     color2Frame.Size = UDim2.new(1, -20, 0, 200)
     color2Frame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     color2Frame.BorderSizePixel = 0
@@ -679,7 +489,7 @@ local function createSettingsContent()
     gridLayout2.CellSize = UDim2.new(0, 45, 0, 45)
     gridLayout2.CellPadding = UDim2.new(0, 5, 0, 5)
     
-    local gradientButton = Instance.new("TextButton", contentZone)
+    local gradientButton = Instance.new("TextButton", container)
     gradientButton.Size = UDim2.new(1, -20, 0, 50)
     gradientButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
     gradientButton.Text = "🎨 Gradient Mode: OFF"
@@ -756,44 +566,205 @@ local function createSettingsContent()
     end)
 end
 
--- Создание кнопок вкладок
-local function clearContentZone()
-    for _, child in ipairs(contentZone:GetChildren()) do
-        if child ~= contentLayout and child ~= contentConstraint then
-            if child:IsA("GuiObject") then child:Destroy() end
-        end
-    end
-end
+-- Функция для обновления порядка Settings вкладки (больше не нужна)
+-- local function updateSettingsOrder()
+--     if settingsTab and settingsTab.button then
+--         settingsTab.button.LayoutOrder = 9999
+--     end
+-- end
 
-for i, tab in ipairs(tabs) do
-    local btn = Instance.new("TextButton", tabPanel)
-    btn.LayoutOrder = i
-    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    btn.Text = tab.icon .. " " .. tab.name
-    btn.Font = Enum.Font.Gotham
-    btn.TextSize = 16
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.BorderSizePixel = 0
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
-    btn.Size = UDim2.new(1, 0, 0, 28)
-    btn.Position = UDim2.new(0, 0, 0, 0)
-    
-    table.insert(tabButtons, btn)
+-- ============================================
+-- ДОБАВЛЕНИЕ ВКЛАДОК
+-- ============================================
 
-    btn.MouseButton1Click:Connect(function()
-        clearContentZone()
-        
-        if tab.name == "Fishing" then
-            createFishingContent()
-        elseif tab.name == "Settings" then
-            createSettingsContent()
-        end
-        
-        contentZone.CanvasSize = UDim2.new(0, 0, 0, contentLayout.AbsoluteContentSize.Y + 20)
-    end)
-end
+-- Settings вкладка (автоматически будет последней)
+local settingsContainer = newTab("Settings", "⚙️")
+createSettingsContent(settingsContainer)
 
+-- ДОБАВЛЯЙ НОВЫЕ ВКЛАДКИ НИЖЕ (Settings всё равно будет внизу):
+-- newTab(название, иконка, позиция_от_1_до_10)
+
+-- Пример:
+-- local mainTab = newTab("Main", "🌐", 1)      -- Позиция 1 (первый)
+-- local label = Instance.new("TextLabel", mainTab)
+-- label.Text = "Main content"
+-- label.Size = UDim2.new(1, -20, 0, 50)
+-- label.BackgroundTransparency = 1
+-- label.TextColor3 = Color3.new(1,1,1)
+-- label.LayoutOrder = 1
+
+-- local fishingTab = newTab("Fishing", "🎣", 3)  -- Позиция 3
+-- local movementTab = newTab("Movement", "🏃", 2) -- Позиция 2
+
+-- Initialize
 wait()
 updateLayout()
 contentZone.CanvasSize = UDim2.new(0, 0, 0, contentLayout.AbsoluteContentSize.Y + 20)
 tabPanel.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 12)
+
+-- Show Settings by default
+if settingsTab then
+    settingsTab.container.Visible = true
+    contentZone.CanvasSize = UDim2.new(0, 0, 0, contentLayout.AbsoluteContentSize.Y + 20)
+end
+
+-- 🎣 Fishing Module
+local fishingTab = newTab("Fishing", "🎣", 6)
+
+-- Контейнер
+local container = Instance.new("Frame", fishingTab)
+container.Size = UDim2.new(0, 340, 0, 240)
+container.Position = UDim2.new(0, 20, 0, 20)
+container.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+container.BorderSizePixel = 0
+Instance.new("UICorner", container).CornerRadius = UDim.new(0, 6)
+
+-- Кнопка включения авто-рыбалки
+local toggleButton = Instance.new("TextButton", container)
+toggleButton.Size = UDim2.new(1, -20, 0, 40)
+toggleButton.Position = UDim2.new(0, 10, 0, 10)
+toggleButton.Text = "Включить авто-рыбалку"
+toggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+toggleButton.TextColor3 = Color3.new(1, 1, 1)
+toggleButton.Font = Enum.Font.GothamBold
+toggleButton.TextSize = 16
+Instance.new("UICorner", toggleButton).CornerRadius = UDim.new(0, 4)
+
+-- Статус
+local statusLabel = Instance.new("TextLabel", container)
+statusLabel.Size = UDim2.new(1, -20, 0, 20)
+statusLabel.Position = UDim2.new(0, 10, 0, 60)
+statusLabel.Text = "Статус: 🔴 Выключено"
+statusLabel.BackgroundTransparency = 1
+statusLabel.TextColor3 = Color3.new(1, 1, 1)
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.TextSize = 14
+
+-- Поклёвка
+local biteLabel = Instance.new("TextLabel", container)
+biteLabel.Size = UDim2.new(1, -20, 0, 20)
+biteLabel.Position = UDim2.new(0, 10, 0, 85)
+biteLabel.Text = "Поклёвка: ⚪ Нет"
+biteLabel.BackgroundTransparency = 1
+biteLabel.TextColor3 = Color3.new(1, 1, 1)
+biteLabel.Font = Enum.Font.Gotham
+biteLabel.TextSize = 14
+
+-- Выбор удочки
+local rodLabel = Instance.new("TextLabel", container)
+rodLabel.Size = UDim2.new(0, 120, 0, 20)
+rodLabel.Position = UDim2.new(0, 10, 0, 115)
+rodLabel.BackgroundTransparency = 1
+rodLabel.Text = "Удочка:"
+rodLabel.Font = Enum.Font.Gotham
+rodLabel.TextSize = 14
+rodLabel.TextColor3 = Color3.fromRGB(220,220,220)
+rodLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local rodButton = Instance.new("TextButton", container)
+rodButton.Size = UDim2.new(0, 200, 0, 28)
+rodButton.Position = UDim2.new(0, 130, 0, 111)
+rodButton.Text = shared.SelectedRod or "Fishing Rod"
+rodButton.Font = Enum.Font.Gotham
+rodButton.TextSize = 14
+rodButton.BackgroundColor3 = Color3.fromRGB(60,60,60)
+rodButton.TextColor3 = Color3.fromRGB(255,255,255)
+rodButton.BorderSizePixel = 0
+Instance.new("UICorner", rodButton).CornerRadius = UDim.new(0,4)
+
+-- Dropdown для выбора удочки
+local dropdown = Instance.new("Frame", container)
+dropdown.Size = UDim2.new(0, 200, 0, 0)
+dropdown.Position = UDim2.new(0, 130, 0, 141)
+dropdown.BackgroundColor3 = Color3.fromRGB(50,50,50)
+dropdown.BorderSizePixel = 0
+Instance.new("UICorner", dropdown).CornerRadius = UDim.new(0,4)
+dropdown.ClipsDescendants = true
+dropdown.Visible = false
+
+local rodOptions = { "Fishing Rod", "Advenced Rod", "Rod of Kings" }
+for idx, name in ipairs(rodOptions) do
+    local opt = Instance.new("TextButton", dropdown)
+    opt.Size = UDim2.new(1, 0, 0, 28)
+    opt.Position = UDim2.new(0, 0, 0, (idx-1)*28)
+    opt.Text = name
+    opt.Font = Enum.Font.Gotham
+    opt.TextSize = 14
+    opt.BackgroundColor3 = Color3.fromRGB(60,60,60)
+    opt.TextColor3 = Color3.fromRGB(255,255,255)
+    opt.BorderSizePixel = 0
+    Instance.new("UICorner", opt).CornerRadius = UDim.new(0,4)
+    opt.MouseButton1Click:Connect(function()
+        shared.SelectedRod = name
+        rodButton.Text = name
+        dropdown.Visible = false
+    end)
+end
+
+rodButton.MouseButton1Click:Connect(function()
+    dropdown.Visible = not dropdown.Visible
+    if dropdown.Visible then
+        dropdown.Size = UDim2.new(0,200,0,#rodOptions * 28)
+    else
+        dropdown.Size = UDim2.new(0,200,0,0)
+    end
+end)
+
+-- Авто-экипировка
+local equipLabel = Instance.new("TextLabel", container)
+equipLabel.Size = UDim2.new(0, 160, 0, 20)
+equipLabel.Position = UDim2.new(0, 10, 0, 160)
+equipLabel.BackgroundTransparency = 1
+equipLabel.Text = "Авто-экипировка удочки"
+equipLabel.Font = Enum.Font.Gotham
+equipLabel.TextSize = 14
+equipLabel.TextColor3 = Color3.fromRGB(220,220,220)
+equipLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local equipToggle = Instance.new("TextButton", container)
+equipToggle.Size = UDim2.new(0, 120, 0, 24)
+equipToggle.Position = UDim2.new(0, 170, 0, 156)
+equipToggle.Text = "OFF"
+equipToggle.Font = Enum.Font.GothamBold
+equipToggle.TextSize = 14
+equipToggle.BackgroundColor3 = Color3.fromRGB(180,60,60)
+equipToggle.TextColor3 = Color3.fromRGB(255,255,255)
+equipToggle.BorderSizePixel = 0
+Instance.new("UICorner", equipToggle).CornerRadius = UDim.new(0,4)
+
+-- Логика
+local autoFishing = false
+local autoEquipRod = false
+
+toggleButton.MouseButton1Click:Connect(function()
+    autoFishing = not autoFishing
+    shared.AutoFishing = autoFishing
+    toggleButton.Text = autoFishing and "Выключить авто-рыбалку" or "Включить авто-рыбалку"
+end)
+
+equipToggle.MouseButton1Click:Connect(function()
+    autoEquipRod = not autoEquipRod
+    shared.AutoEquipRod = autoEquipRod
+    equipToggle.Text = autoEquipRod and "ON" or "OFF"
+    equipToggle.BackgroundColor3 = autoEquipRod and Color3.fromRGB(40,180,80) or Color3.fromRGB(180,60,60)
+end)
+
+-- Цикл авто-рыбалки
+task.spawn(function()
+    while true do
+        if autoFishing then
+            statusLabel.Text = "Статус: 🟢 Работает"
+            biteLabel.Text = "Поклёвка: ⚪ Нет"
+            -- здесь полный fishing-цикл из oldpilgrammed.lua:
+            -- 1. проверка удочки
+            -- 2. клик мышкой (VirtualInputManager)
+            -- 3. поиск Bobber
+            -- 4. отслеживание движения поплавка
+            -- 5. клик при поклёвке
+        else
+            statusLabel.Text = "Статус: 🔴 Выключено"
+            biteLabel.Text = "Поклёвка: ⚪ Нет"
+        end
+        task.wait(0.5)
+    end
+end)
