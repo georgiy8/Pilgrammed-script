@@ -1060,3 +1060,279 @@ visualsTitle.TextColor3 = Color3.new(1, 1, 1)
 visualsTitle.Font = Enum.Font.GothamBold
 visualsTitle.TextSize = 20
 visualsTitle.LayoutOrder = 1
+
+-- ESP логіка
+local oreESPEnabled = false
+local oreHighlights = {}
+
+-- Кольори для різних руд
+local oreColors = {
+    ["Copper"] = Color3.fromRGB(184, 115, 51),
+    ["Tin"] = Color3.fromRGB(180, 180, 180),
+    ["Iron"] = Color3.fromRGB(200, 200, 200),
+    ["Zinc"] = Color3.fromRGB(220, 220, 230),
+    ["Silver"] = Color3.fromRGB(192, 192, 192),
+    ["Brass"] = Color3.fromRGB(181, 166, 66),
+    ["Bronze"] = Color3.fromRGB(205, 127, 50),
+    ["Demetal"] = Color3.fromRGB(150, 50, 50),
+    ["Mithril"] = Color3.fromRGB(100, 200, 255),
+    ["Emerald"] = Color3.fromRGB(0, 255, 0),
+    ["Diamond"] = Color3.fromRGB(0, 200, 255),
+    ["Sapphire"] = Color3.fromRGB(0, 100, 255),
+    ["Ruby"] = Color3.fromRGB(255, 0, 0),
+    ["Sulfur"] = Color3.fromRGB(255, 255, 0),
+}
+
+-- Вибрані руди (за замовчуванням всі увімкнені)
+local selectedOres = {}
+for oreName, _ in pairs(oreColors) do
+    selectedOres[oreName] = true
+end
+
+-- Кнопка Ore ESP
+local oreESPButton = Instance.new("TextButton", visualsTab)
+oreESPButton.Text = "🔴 Ore ESP: OFF"
+oreESPButton.Size = UDim2.new(1, -20, 0, 50)
+oreESPButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+oreESPButton.TextColor3 = Color3.new(1, 1, 1)
+oreESPButton.Font = Enum.Font.GothamBold
+oreESPButton.TextSize = 18
+oreESPButton.LayoutOrder = 2
+Instance.new("UICorner", oreESPButton).CornerRadius = UDim.new(0, 6)
+
+-- Статус
+local oreStatus = Instance.new("TextLabel", visualsTab)
+oreStatus.Text = "Найдено руд: 0"
+oreStatus.Size = UDim2.new(1, -20, 0, 30)
+oreStatus.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+oreStatus.TextColor3 = Color3.new(1, 1, 1)
+oreStatus.Font = Enum.Font.Gotham
+oreStatus.TextSize = 14
+oreStatus.LayoutOrder = 3
+Instance.new("UICorner", oreStatus).CornerRadius = UDim.new(0, 6)
+
+-- Кнопка оновлення
+local refreshButton = Instance.new("TextButton", visualsTab)
+refreshButton.Text = "🔄 Обновить ESP"
+refreshButton.Size = UDim2.new(1, -20, 0, 45)
+refreshButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+refreshButton.TextColor3 = Color3.new(1, 1, 1)
+refreshButton.Font = Enum.Font.GothamBold
+refreshButton.TextSize = 16
+refreshButton.LayoutOrder = 4
+Instance.new("UICorner", refreshButton).CornerRadius = UDim.new(0, 6)
+
+-- Список руд для вибору
+local oreListFrame = Instance.new("Frame", visualsTab)
+oreListFrame.Size = UDim2.new(1, -20, 0, 500)
+oreListFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+oreListFrame.BorderSizePixel = 0
+oreListFrame.LayoutOrder = 5
+Instance.new("UICorner", oreListFrame).CornerRadius = UDim.new(0, 6)
+
+local listTitle = Instance.new("TextLabel", oreListFrame)
+listTitle.Size = UDim2.new(1, -20, 0, 30)
+listTitle.Position = UDim2.new(0, 10, 0, 10)
+listTitle.BackgroundTransparency = 1
+listTitle.Text = "💎 Выбор руд:"
+listTitle.TextColor3 = Color3.new(1, 1, 1)
+listTitle.Font = Enum.Font.GothamBold
+listTitle.TextSize = 16
+listTitle.TextXAlignment = Enum.TextXAlignment.Left
+
+-- ScrollingFrame для списку
+local scrollFrame = Instance.new("ScrollingFrame", oreListFrame)
+scrollFrame.Size = UDim2.new(1, -20, 1, -50)
+scrollFrame.Position = UDim2.new(0, 10, 0, 40)
+scrollFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+scrollFrame.BorderSizePixel = 0
+scrollFrame.ScrollBarThickness = 4
+scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+Instance.new("UICorner", scrollFrame).CornerRadius = UDim.new(0, 6)
+
+local listLayout = Instance.new("UIListLayout", scrollFrame)
+listLayout.Padding = UDim.new(0, 5)
+listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+local listPadding = Instance.new("UIPadding", scrollFrame)
+listPadding.PaddingLeft = UDim.new(0, 5)
+listPadding.PaddingRight = UDim.new(0, 5)
+listPadding.PaddingTop = UDim.new(0, 5)
+listPadding.PaddingBottom = UDim.new(0, 5)
+
+-- Створення кнопок для кожної руди
+local oreButtons = {}
+for oreName, color in pairs(oreColors) do
+    local oreFrame = Instance.new("Frame", scrollFrame)
+    oreFrame.Size = UDim2.new(1, -10, 0, 35)
+    oreFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    oreFrame.BorderSizePixel = 0
+    Instance.new("UICorner", oreFrame).CornerRadius = UDim.new(0, 6)
+    
+    -- Індикатор (квадрат)
+    local indicator = Instance.new("Frame", oreFrame)
+    indicator.Size = UDim2.new(0, 25, 0, 25)
+    indicator.Position = UDim2.new(0, 5, 0.5, -12.5)
+    indicator.BackgroundColor3 = Color3.fromRGB(0, 255, 0) -- Зелений за замовчуванням
+    indicator.BorderSizePixel = 0
+    Instance.new("UICorner", indicator).CornerRadius = UDim.new(0, 4)
+    
+    -- Назва руди
+    local nameLabel = Instance.new("TextLabel", oreFrame)
+    nameLabel.Size = UDim2.new(1, -40, 1, 0)
+    nameLabel.Position = UDim2.new(0, 35, 0, 0)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Text = oreName
+    nameLabel.TextColor3 = color
+    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.TextSize = 14
+    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    
+    -- Кнопка (невидима, на весь фрейм)
+    local button = Instance.new("TextButton", oreFrame)
+    button.Size = UDim2.new(1, 0, 1, 0)
+    button.BackgroundTransparency = 1
+    button.Text = ""
+    
+    oreButtons[oreName] = {frame = oreFrame, indicator = indicator, button = button}
+    
+    -- Обробник кліку
+    button.MouseButton1Click:Connect(function()
+        selectedOres[oreName] = not selectedOres[oreName]
+        if selectedOres[oreName] then
+            indicator.BackgroundColor3 = Color3.fromRGB(0, 255, 0) -- Зелений
+        else
+            indicator.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Червоний
+        end
+        
+        -- Оновлюємо ESP якщо увімкнено
+        if oreESPEnabled then
+            updateOreESP()
+        end
+    end)
+end
+
+-- Функція для знаходження назви руди
+local function getOreName(obj)
+    local base = obj:FindFirstChild("Base")
+    if base then
+        local part = base:FindFirstChild("Part")
+        if part and part.Name then
+            return part.Name
+        end
+    end
+    
+    for _, child in pairs(obj:GetDescendants()) do
+        if child:IsA("BasePart") and child.Name ~= "Base" and child.Name ~= "Part" then
+            for oreName, _ in pairs(oreColors) do
+                if string.find(child.Name, oreName) then
+                    return oreName
+                end
+            end
+        end
+    end
+    
+    return nil
+end
+
+-- Функція створення ESP для руди
+local function createOreESP(ore)
+    local oreName = getOreName(ore)
+    if not oreName or not selectedOres[oreName] then return end -- Перевірка чи вибрано руду
+    
+    local color = oreColors[oreName] or Color3.fromRGB(255, 255, 255)
+    
+    local mainPart = ore:FindFirstChildWhichIsA("BasePart", true)
+    if not mainPart then return end
+    
+    local highlight = Instance.new("Highlight")
+    highlight.Parent = ore
+    highlight.Adornee = ore
+    highlight.FillColor = color
+    highlight.OutlineColor = color
+    highlight.FillTransparency = 0.5
+    highlight.OutlineTransparency = 0
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    
+    local billboard = Instance.new("BillboardGui")
+    billboard.Parent = mainPart
+    billboard.Adornee = mainPart
+    billboard.Size = UDim2.new(0, 100, 0, 40)
+    billboard.StudsOffset = Vector3.new(0, 2, 0)
+    billboard.AlwaysOnTop = true
+    
+    local textLabel = Instance.new("TextLabel", billboard)
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Text = oreName
+    textLabel.TextColor3 = color
+    textLabel.TextStrokeTransparency = 0.5
+    textLabel.Font = Enum.Font.GothamBold
+    textLabel.TextSize = 14
+    
+    table.insert(oreHighlights, {highlight = highlight, billboard = billboard})
+end
+
+-- Функція для видалення всіх ESP
+local function clearOreESP()
+    for _, data in pairs(oreHighlights) do
+        if data.highlight then data.highlight:Destroy() end
+        if data.billboard then data.billboard:Destroy() end
+    end
+    oreHighlights = {}
+end
+
+-- Функція для оновлення ESP
+function updateOreESP()
+    clearOreESP()
+    
+    if oreESPEnabled then
+        local oresFolder = workspace:FindFirstChild("Ores") or workspace:FindFirstChild("ores")
+        
+        if oresFolder then
+            for _, ore in pairs(oresFolder:GetChildren()) do
+                if ore:IsA("Model") or ore:IsA("Folder") then
+                    createOreESP(ore)
+                end
+            end
+        else
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if obj:IsA("Model") and obj.Name:match("%d+") then
+                    local oreName = getOreName(obj)
+                    if oreName then
+                        createOreESP(obj)
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- Toggle ESP
+oreESPButton.MouseButton1Click:Connect(function()
+    oreESPEnabled = not oreESPEnabled
+    oreESPButton.Text = oreESPEnabled and "🟢 Ore ESP: ON" or "🔴 Ore ESP: OFF"
+    oreESPButton.BackgroundColor3 = oreESPEnabled and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
+    
+    updateOreESP()
+    oreStatus.Text = "Найдено руд: " .. #oreHighlights
+end)
+
+-- Оновлення ESP
+refreshButton.MouseButton1Click:Connect(function()
+    if oreESPEnabled then
+        updateOreESP()
+        oreStatus.Text = "Найдено руд: " .. #oreHighlights
+    end
+end)
+
+-- Автоматичне оновлення
+task.spawn(function()
+    while wait(5) do
+        if oreESPEnabled then
+            updateOreESP()
+            oreStatus.Text = "Найдено руд: " .. #oreHighlights
+        end
+    end
+end)
