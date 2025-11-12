@@ -879,18 +879,173 @@ miningTitle.TextSize = 20
 miningTitle.LayoutOrder = 1
 
 -- ============================================
--- 🎈 FLOATING TAB (Позиція 3) - ПУСТА
+-- 🎈 FLOATING TAB (Позиція 3)
 -- ============================================
 local floatingTab = newTab("Floating", "🎈", 3)
 
 local floatingTitle = Instance.new("TextLabel", floatingTab)
-floatingTitle.Text = "🎈 Floating"
+floatingTitle.Text = "🎈 Object Explorer"
 floatingTitle.Size = UDim2.new(1, -20, 0, 40)
 floatingTitle.BackgroundTransparency = 1
 floatingTitle.TextColor3 = Color3.new(1, 1, 1)
 floatingTitle.Font = Enum.Font.GothamBold
 floatingTitle.TextSize = 20
 floatingTitle.LayoutOrder = 1
+
+-- Логіка
+local mouse = player:GetMouse()
+local selectedPart = nil
+local selecting = false
+local highlight = nil
+local respawnEnabled = false
+local respawnPosition = nil
+
+-- Індикатор
+local indicator = Instance.new("TextLabel", floatingTab)
+indicator.Text = "⛔ Нет объекта"
+indicator.Size = UDim2.new(1, -20, 0, 30)
+indicator.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+indicator.TextColor3 = Color3.fromRGB(255, 100, 100)
+indicator.Font = Enum.Font.Gotham
+indicator.TextSize = 16
+indicator.LayoutOrder = 2
+Instance.new("UICorner", indicator).CornerRadius = UDim.new(0, 6)
+
+-- Кнопка вибору об'єкта
+local selectBtn = Instance.new("TextButton", floatingTab)
+selectBtn.Text = "🔍 Выбрать объект"
+selectBtn.Size = UDim2.new(1, -20, 0, 45)
+selectBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+selectBtn.TextColor3 = Color3.new(1, 1, 1)
+selectBtn.Font = Enum.Font.GothamBold
+selectBtn.TextSize = 16
+selectBtn.LayoutOrder = 3
+Instance.new("UICorner", selectBtn).CornerRadius = UDim.new(0, 6)
+
+-- Підтвердження Anchored
+local confirmBtn = Instance.new("TextButton", floatingTab)
+confirmBtn.Text = "⚓ Подтвердить Anchored"
+confirmBtn.Size = UDim2.new(1, -20, 0, 45)
+confirmBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+confirmBtn.TextColor3 = Color3.new(1, 1, 1)
+confirmBtn.Font = Enum.Font.GothamBold
+confirmBtn.TextSize = 16
+confirmBtn.LayoutOrder = 4
+Instance.new("UICorner", confirmBtn).CornerRadius = UDim.new(0, 6)
+
+-- Телепортувати об'єкт під себе
+local teleportObjBtn = Instance.new("TextButton", floatingTab)
+teleportObjBtn.Text = "📦 Телепортировать объект"
+teleportObjBtn.Size = UDim2.new(1, -20, 0, 45)
+teleportObjBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+teleportObjBtn.TextColor3 = Color3.new(1, 1, 1)
+teleportObjBtn.Font = Enum.Font.GothamBold
+teleportObjBtn.TextSize = 16
+teleportObjBtn.LayoutOrder = 5
+Instance.new("UICorner", teleportObjBtn).CornerRadius = UDim.new(0, 6)
+
+-- Телепортуватися на об'єкт
+local teleportToObjBtn = Instance.new("TextButton", floatingTab)
+teleportToObjBtn.Text = "🚶 Телепорт на объект"
+teleportToObjBtn.Size = UDim2.new(1, -20, 0, 45)
+teleportToObjBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+teleportToObjBtn.TextColor3 = Color3.new(1, 1, 1)
+teleportToObjBtn.Font = Enum.Font.GothamBold
+teleportToObjBtn.TextSize = 16
+teleportToObjBtn.LayoutOrder = 6
+Instance.new("UICorner", teleportToObjBtn).CornerRadius = UDim.new(0, 6)
+
+-- Респавн toggle
+local respawnBtn = Instance.new("TextButton", floatingTab)
+respawnBtn.Text = "🔴 Респавн: ВЫКЛ"
+respawnBtn.Size = UDim2.new(1, -20, 0, 45)
+respawnBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+respawnBtn.TextColor3 = Color3.new(1, 1, 1)
+respawnBtn.Font = Enum.Font.GothamBold
+respawnBtn.TextSize = 16
+respawnBtn.LayoutOrder = 7
+Instance.new("UICorner", respawnBtn).CornerRadius = UDim.new(0, 6)
+
+-- Вибір об'єкта
+selectBtn.MouseButton1Click:Connect(function()
+    selecting = true
+    selectedPart = nil
+    indicator.Text = "🟡 Ожидание клика..."
+    indicator.TextColor3 = Color3.fromRGB(255, 255, 0)
+    if highlight then highlight:Destroy() end
+end)
+
+-- Клік по об'єкту
+mouse.Button1Down:Connect(function()
+    if selecting then
+        local target = mouse.Target
+        if target and target:IsA("BasePart") then
+            selectedPart = target
+            selecting = false
+            indicator.Text = "🟠 Выбран: " .. target.Name
+            indicator.TextColor3 = Color3.fromRGB(255, 165, 0)
+
+            if highlight then highlight:Destroy() end
+            highlight = Instance.new("Highlight", target)
+            highlight.Adornee = target
+            highlight.FillColor = Color3.fromRGB(255, 255, 0)
+            highlight.OutlineColor = Color3.fromRGB(255, 0, 0)
+            highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        end
+    end
+end)
+
+-- Підтвердження Anchored
+confirmBtn.MouseButton1Click:Connect(function()
+    if selectedPart then
+        selectedPart.Anchored = true
+        indicator.Text = "🟢 Подтверждён: " .. selectedPart.Name
+        indicator.TextColor3 = Color3.fromRGB(0, 255, 0)
+    end
+end)
+
+-- Телепортувати об'єкт під себе
+teleportObjBtn.MouseButton1Click:Connect(function()
+    if selectedPart and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        local root = player.Character.HumanoidRootPart
+        selectedPart.CFrame = root.CFrame * CFrame.new(0, -3, 0)
+        indicator.Text = "📦 Объект под тобой"
+        indicator.TextColor3 = Color3.fromRGB(0, 200, 255)
+    end
+end)
+
+-- Телепортуватися на об'єкт
+teleportToObjBtn.MouseButton1Click:Connect(function()
+    if selectedPart and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        local root = player.Character.HumanoidRootPart
+        root.CFrame = selectedPart.CFrame + Vector3.new(0, 5, 0)
+        indicator.Text = "🚶 Ты на объекте"
+        indicator.TextColor3 = Color3.fromRGB(0, 200, 255)
+    end
+end)
+
+-- Увімкнути/Вимкнути респавн
+respawnBtn.MouseButton1Click:Connect(function()
+    if selectedPart then
+        respawnEnabled = not respawnEnabled
+        if respawnEnabled then
+            respawnPosition = selectedPart.CFrame + Vector3.new(0, 5, 0)
+            respawnBtn.Text = "🟢 Респавн: ВКЛ"
+            respawnBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+        else
+            respawnBtn.Text = "🔴 Респавн: ВЫКЛ"
+            respawnBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+        end
+    end
+end)
+
+-- Респавн обробник
+player.CharacterAdded:Connect(function(char)
+    if respawnEnabled and respawnPosition then
+        local root = char:WaitForChild("HumanoidRootPart")
+        root.CFrame = respawnPosition
+    end
+end)
 
 -- ============================================
 -- 👁️ VISUALS TAB (Позиція 4) - ПУСТА
