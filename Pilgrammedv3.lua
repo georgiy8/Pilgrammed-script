@@ -1216,6 +1216,530 @@ local function createFishingTab()
     end)
 end
 
+-- Mining Tab Module з Auto Tool Equip + Auto Mining
+local function createMiningTab()
+    local miningTab = newTab("Mining", "⛏️", 2)
+    
+    local miningTitle = Instance.new("TextLabel", miningTab)
+    miningTitle.Text = "⛏️ Mining"
+    miningTitle.Size = UDim2.new(1, -20, 0, 40)
+    miningTitle.BackgroundTransparency = 1
+    miningTitle.TextColor3 = Color3.new(1, 1, 1)
+    miningTitle.Font = Enum.Font.GothamBold
+    miningTitle.TextSize = 20
+    miningTitle.LayoutOrder = 1
+    
+    -- Локальні змінні
+    local autoToolEnabled = false
+    local autoMiningEnabled = false
+    local autoWalkEnabled = false
+    local selectedTool = nil
+    local toolList = {}
+    local currentTargetOre = nil
+    
+    -- Кольори руд для пошуку
+    local oreNames = {
+        "Copper", "Tin", "Iron", "Zinc", "Silver",
+        "Brass", "Bronze", "Demetal", "Mithril",
+        "Emerald", "Diamond", "Sapphire", "Ruby", "Sulfur"
+    }
+    
+    -- Функція пошуку інструментів
+    local function findMiningTools()
+        toolList = {}
+        local backpack = player:FindFirstChild("Backpack")
+        
+        if backpack then
+            for _, tool in pairs(backpack:GetChildren()) do
+                if tool:IsA("Tool") then
+                    local toolName = tool.Name:lower()
+                    if toolName:match("pick") or toolName:match("axe") or toolName:match("drill") or 
+                       toolName:match("shovel") or toolName:match("hammer") or toolName:match("mining") then
+                        table.insert(toolList, tool)
+                    end
+                end
+            end
+        end
+        
+        if player.Character then
+            for _, tool in pairs(player.Character:GetChildren()) do
+                if tool:IsA("Tool") then
+                    local toolName = tool.Name:lower()
+                    if toolName:match("pick") or toolName:match("axe") or toolName:match("drill") or 
+                       toolName:match("shovel") or toolName:match("hammer") or toolName:match("mining") then
+                        local alreadyListed = false
+                        for _, listedTool in pairs(toolList) do
+                            if listedTool.Name == tool.Name then
+                                alreadyListed = true
+                                break
+                            end
+                        end
+                        if not alreadyListed then
+                            table.insert(toolList, tool)
+                        end
+                    end
+                end
+            end
+        end
+        
+        return toolList
+    end
+    
+    -- Функція екіпування
+    local function equipTool(tool)
+        if not tool then return false end
+        
+        if tool.Parent == player.Backpack then
+            player.Character.Humanoid:EquipTool(tool)
+            return true
+        end
+        
+        if tool.Parent == player.Character then
+            return true
+        end
+        
+        return false
+    end
+    
+    -- Функція знаходження назви руди
+    local function getOreName(obj)
+        local base = obj:FindFirstChild("Base")
+        if base then
+            local part = base:FindFirstChild("Part")
+            if part and part.Name then
+                return part.Name
+            end
+        end
+        
+        for _, child in pairs(obj:GetDescendants()) do
+            if child:IsA("BasePart") and child.Name ~= "Base" and child.Name ~= "Part" then
+                for _, oreName in pairs(oreNames) do
+                    if string.find(child.Name, oreName) then
+                        return oreName
+                    end
+                end
+            end
+        end
+        
+        return nil
+    end
+    
+    -- Функція пошуку найближчої руди
+    local function findNearestOre()
+        local oresFolder = workspace:FindFirstChild("Ores") or workspace:FindFirstChild("ores")
+        local nearestOre = nil
+        local shortestDistance = math.huge
+        
+        if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
+            return nil
+        end
+        
+        local playerPos = player.Character.HumanoidRootPart.Position
+        
+        if oresFolder then
+            for _, ore in pairs(oresFolder:GetChildren()) do
+                if ore:IsA("Model") or ore:IsA("Folder") then
+                    local oreName = getOreName(ore)
+                    if oreName then
+                        local orePart = ore:FindFirstChildWhichIsA("BasePart", true)
+                        if orePart then
+                            local distance = (orePart.Position - playerPos).Magnitude
+                            if distance < shortestDistance then
+                                shortestDistance = distance
+                                nearestOre = ore
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        
+        return nearestOre
+    end
+    
+    -- Функція телепорту до руди
+    local function teleportToOre(ore)
+        if not ore or not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
+            return false
+        end
+        
+        local orePart = ore:FindFirstChildWhichIsA("BasePart", true)
+        if orePart then
+            player.Character.HumanoidRootPart.CFrame = orePart.CFrame + Vector3.new(0, 3, 0)
+            return true
+        end
+        
+        return false
+    end
+    
+    -- Функція ходьби до руди
+    local function walkToOre(ore)
+        if not ore or not player.Character or not player.Character:FindFirstChild("Humanoid") then
+            return false
+        end
+        
+        local orePart = ore:FindFirstChildWhichIsA("BasePart", true)
+        if orePart then
+            player.Character.Humanoid:MoveTo(orePart.Position)
+            return true
+        end
+        
+        return false
+    end
+    
+    -- Функція активації інструменту (спроба копання)
+    local function activateTool()
+        if selectedTool and selectedTool:FindFirstChild("Handle") then
+            selectedTool:Activate()
+        end
+    end
+    
+    -- Auto Tool Toggle
+    local autoToolButton = Instance.new("TextButton", miningTab)
+    autoToolButton.Text = "🔴 Auto Tool: OFF"
+    autoToolButton.Size = UDim2.new(1, -20, 0, 50)
+    autoToolButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+    autoToolButton.TextColor3 = Color3.new(1, 1, 1)
+    autoToolButton.Font = Enum.Font.GothamBold
+    autoToolButton.TextSize = 18
+    autoToolButton.LayoutOrder = 2
+    Instance.new("UICorner", autoToolButton).CornerRadius = UDim.new(0, 6)
+    
+    -- Статус
+    local toolStatus = Instance.new("TextLabel", miningTab)
+    toolStatus.Text = "Инструмент: Не выбран"
+    toolStatus.Size = UDim2.new(1, -20, 0, 30)
+    toolStatus.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    toolStatus.TextColor3 = Color3.new(1, 1, 1)
+    toolStatus.Font = Enum.Font.Gotham
+    toolStatus.TextSize = 14
+    toolStatus.LayoutOrder = 3
+    Instance.new("UICorner", toolStatus).CornerRadius = UDim.new(0, 6)
+    
+    -- Кнопка оновлення
+    local refreshToolsButton = Instance.new("TextButton", miningTab)
+    refreshToolsButton.Text = "🔄 Обновить список"
+    refreshToolsButton.Size = UDim2.new(1, -20, 0, 45)
+    refreshToolsButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    refreshToolsButton.TextColor3 = Color3.new(1, 1, 1)
+    refreshToolsButton.Font = Enum.Font.GothamBold
+    refreshToolsButton.TextSize = 16
+    refreshToolsButton.LayoutOrder = 4
+    Instance.new("UICorner", refreshToolsButton).CornerRadius = UDim.new(0, 6)
+    
+    -- Auto Mining Toggle
+    local autoMiningButton = Instance.new("TextButton", miningTab)
+    autoMiningButton.Text = "🔴 Auto Mining: OFF"
+    autoMiningButton.Size = UDim2.new(1, -20, 0, 50)
+    autoMiningButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+    autoMiningButton.TextColor3 = Color3.new(1, 1, 1)
+    autoMiningButton.Font = Enum.Font.GothamBold
+    autoMiningButton.TextSize = 18
+    autoMiningButton.LayoutOrder = 5
+    Instance.new("UICorner", autoMiningButton).CornerRadius = UDim.new(0, 6)
+    
+    -- Auto Walk Toggle
+    local autoWalkButton = Instance.new("TextButton", miningTab)
+    autoWalkButton.Text = "Режим: Телепорт"
+    autoWalkButton.Size = UDim2.new(1, -20, 0, 45)
+    autoWalkButton.BackgroundColor3 = Color3.fromRGB(50, 100, 255)
+    autoWalkButton.TextColor3 = Color3.new(1, 1, 1)
+    autoWalkButton.Font = Enum.Font.GothamBold
+    autoWalkButton.TextSize = 16
+    autoWalkButton.LayoutOrder = 6
+    Instance.new("UICorner", autoWalkButton).CornerRadius = UDim.new(0, 6)
+    
+    -- Mining Status
+    local miningStatus = Instance.new("TextLabel", miningTab)
+    miningStatus.Text = "Статус: Ожидание..."
+    miningStatus.Size = UDim2.new(1, -20, 0, 30)
+    miningStatus.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    miningStatus.TextColor3 = Color3.new(1, 1, 1)
+    miningStatus.Font = Enum.Font.Gotham
+    miningStatus.TextSize = 14
+    miningStatus.LayoutOrder = 7
+    Instance.new("UICorner", miningStatus).CornerRadius = UDim.new(0, 6)
+    
+    -- Фрейм списку інструментів
+    local toolListFrame = Instance.new("Frame", miningTab)
+    toolListFrame.Size = UDim2.new(1, -20, 0, 300)
+    toolListFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    toolListFrame.BorderSizePixel = 0
+    toolListFrame.LayoutOrder = 8
+    Instance.new("UICorner", toolListFrame).CornerRadius = UDim.new(0, 6)
+    
+    local listTitle = Instance.new("TextLabel", toolListFrame)
+    listTitle.Size = UDim2.new(1, -20, 0, 30)
+    listTitle.Position = UDim2.new(0, 10, 0, 10)
+    listTitle.BackgroundTransparency = 1
+    listTitle.Text = "🔨 Доступные инструменты:"
+    listTitle.TextColor3 = Color3.new(1, 1, 1)
+    listTitle.Font = Enum.Font.GothamBold
+    listTitle.TextSize = 16
+    listTitle.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local scrollFrame = Instance.new("ScrollingFrame", toolListFrame)
+    scrollFrame.Size = UDim2.new(1, -20, 1, -50)
+    scrollFrame.Position = UDim2.new(0, 10, 0, 40)
+    scrollFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    scrollFrame.BorderSizePixel = 0
+    scrollFrame.ScrollBarThickness = 4
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    Instance.new("UICorner", scrollFrame).CornerRadius = UDim.new(0, 6)
+    
+    local listLayout = Instance.new("UIListLayout", scrollFrame)
+    listLayout.Padding = UDim.new(0, 5)
+    listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    
+    local listPadding = Instance.new("UIPadding", scrollFrame)
+    listPadding.PaddingLeft = UDim.new(0, 5)
+    listPadding.PaddingRight = UDim.new(0, 5)
+    listPadding.PaddingTop = UDim.new(0, 5)
+    listPadding.PaddingBottom = UDim.new(0, 5)
+    
+    -- Функція відображення списку
+    local function updateToolList()
+        for _, child in pairs(scrollFrame:GetChildren()) do
+            if child:IsA("Frame") then
+                child:Destroy()
+            end
+        end
+        
+        findMiningTools()
+        
+        if #toolList == 0 then
+            local noToolsLabel = Instance.new("TextLabel", scrollFrame)
+            noToolsLabel.Size = UDim2.new(1, -10, 0, 40)
+            noToolsLabel.BackgroundTransparency = 1
+            noToolsLabel.Text = "⚠️ Инструменты не найдены"
+            noToolsLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
+            noToolsLabel.Font = Enum.Font.Gotham
+            noToolsLabel.TextSize = 14
+            return
+        end
+        
+        for _, tool in pairs(toolList) do
+            local toolFrame = Instance.new("Frame", scrollFrame)
+            toolFrame.Size = UDim2.new(1, -10, 0, 40)
+            toolFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+            toolFrame.BorderSizePixel = 0
+            Instance.new("UICorner", toolFrame).CornerRadius = UDim.new(0, 6)
+            
+            local indicator = Instance.new("Frame", toolFrame)
+            indicator.Size = UDim2.new(0, 8, 1, -10)
+            indicator.Position = UDim2.new(0, 5, 0, 5)
+            indicator.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+            indicator.BorderSizePixel = 0
+            Instance.new("UICorner", indicator).CornerRadius = UDim.new(0, 4)
+            
+            local toolLabel = Instance.new("TextLabel", toolFrame)
+            toolLabel.Size = UDim2.new(1, -60, 1, 0)
+            toolLabel.Position = UDim2.new(0, 20, 0, 0)
+            toolLabel.BackgroundTransparency = 1
+            toolLabel.Text = "⛏️ " .. tool.Name
+            toolLabel.TextColor3 = Color3.new(1, 1, 1)
+            toolLabel.Font = Enum.Font.Gotham
+            toolLabel.TextSize = 14
+            toolLabel.TextXAlignment = Enum.TextXAlignment.Left
+            
+            local selectButton = Instance.new("TextButton", toolFrame)
+            selectButton.Size = UDim2.new(0, 45, 0, 30)
+            selectButton.Position = UDim2.new(1, -50, 0.5, -15)
+            selectButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+            selectButton.Text = "✓"
+            selectButton.TextColor3 = Color3.new(1, 1, 1)
+            selectButton.Font = Enum.Font.GothamBold
+            selectButton.TextSize = 18
+            Instance.new("UICorner", selectButton).CornerRadius = UDim.new(0, 6)
+            
+            if selectedTool and selectedTool.Name == tool.Name then
+                indicator.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+                selectButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+            end
+            
+            selectButton.MouseButton1Click:Connect(function()
+                selectedTool = tool
+                toolStatus.Text = "Инструмент: " .. tool.Name
+                updateToolList()
+            end)
+        end
+    end
+    
+    -- Toggle Auto Tool
+    autoToolButton.MouseButton1Click:Connect(function()
+        autoToolEnabled = not autoToolEnabled
+        autoToolButton.Text = autoToolEnabled and "🟢 Auto Tool: ON" or "🔴 Auto Tool: OFF"
+        autoToolButton.BackgroundColor3 = autoToolEnabled and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
+        
+        if autoToolEnabled and selectedTool then
+            equipTool(selectedTool)
+        end
+    end)
+    
+    -- Toggle Auto Mining
+    autoMiningButton.MouseButton1Click:Connect(function()
+        autoMiningEnabled = not autoMiningEnabled
+        autoMiningButton.Text = autoMiningEnabled and "🟢 Auto Mining: ON" or "🔴 Auto Mining: OFF"
+        autoMiningButton.BackgroundColor3 = autoMiningEnabled and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
+    end)
+    
+    -- Toggle Walk Mode
+    autoWalkButton.MouseButton1Click:Connect(function()
+        autoWalkEnabled = not autoWalkEnabled
+        autoWalkButton.Text = autoWalkEnabled and "Режим: Ходьба" or "Режим: Телепорт"
+        autoWalkButton.BackgroundColor3 = autoWalkEnabled and Color3.fromRGB(255, 150, 0) or Color3.fromRGB(50, 100, 255)
+    end)
+    
+    -- Оновити список
+    refreshToolsButton.MouseButton1Click:Connect(function()
+        updateToolList()
+    end)
+    
+    -- Автоматичне екіпування інструменту
+    task.spawn(function()
+        while wait(0.5) do
+            if autoToolEnabled and selectedTool then
+                local equipped = false
+                if player.Character then
+                    for _, tool in pairs(player.Character:GetChildren()) do
+                        if tool:IsA("Tool") and tool.Name == selectedTool.Name then
+                            equipped = true
+                            break
+                        end
+                    end
+                end
+                
+                if not equipped then
+                    equipTool(selectedTool)
+                end
+            end
+        end
+    end)
+    
+    -- Auto Mining Loop
+    task.spawn(function()
+        while wait(1) do
+            if autoMiningEnabled then
+                if not selectedTool then
+                    miningStatus.Text = "⚠️ Выберите инструмент!"
+                else
+                    -- Шукаємо найближчу руду
+                    currentTargetOre = findNearestOre()
+                    
+                    if currentTargetOre then
+                        local oreName = getOreName(currentTargetOre)
+                        miningStatus.Text = "⛏️ Копаем: " .. (oreName or "Руду")
+                        
+                        -- Переміщаємося до руди
+                        if autoWalkEnabled then
+                            walkToOre(currentTargetOre)
+                            wait(2) -- Чекаємо поки дійдемо
+                        else
+                            teleportToOre(currentTargetOre)
+                            wait(0.5)
+                        end
+                        
+                        -- Екіпуємо інструмент і копаємо
+                        if selectedTool then
+                            equipTool(selectedTool)
+                            wait(0.3)
+                            
+                            -- Копаємо кілька разів
+                            for i = 1, 5 do
+                                if not currentTargetOre or not currentTargetOre.Parent then
+                                    break
+                                end
+                                activateTool()
+                                wait(0.5)
+                            end
+                        end
+                    else
+                        miningStatus.Text = "🔍 Поиск руд..."
+                    end
+                end
+            else
+                miningStatus.Text = "Статус: Выключено"
+            end
+        end
+    end)
+    
+    -- Ініціалізація
+    wait(0.5)
+    updateToolList()
+end0)
+            toolLabel.BackgroundTransparency = 1
+            toolLabel.Text = "⛏️ " .. tool.Name
+            toolLabel.TextColor3 = Color3.new(1, 1, 1)
+            toolLabel.Font = Enum.Font.Gotham
+            toolLabel.TextSize = 14
+            toolLabel.TextXAlignment = Enum.TextXAlignment.Left
+            
+            local selectButton = Instance.new("TextButton", toolFrame)
+            selectButton.Size = UDim2.new(0, 45, 0, 30)
+            selectButton.Position = UDim2.new(1, -50, 0.5, -15)
+            selectButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+            selectButton.Text = "✓"
+            selectButton.TextColor3 = Color3.new(1, 1, 1)
+            selectButton.Font = Enum.Font.GothamBold
+            selectButton.TextSize = 18
+            Instance.new("UICorner", selectButton).CornerRadius = UDim.new(0, 6)
+            
+            if selectedTool and selectedTool.Name == tool.Name then
+                indicator.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+                selectButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+            end
+            
+            selectButton.MouseButton1Click:Connect(function()
+                selectedTool = tool
+                toolStatus.Text = "Инструмент: " .. tool.Name
+                updateToolList()
+            end)
+        end
+    end
+    
+    -- Toggle Auto Tool
+    autoToolButton.MouseButton1Click:Connect(function()
+        autoToolEnabled = not autoToolEnabled
+        autoToolButton.Text = autoToolEnabled and "🟢 Auto Tool: ON" or "🔴 Auto Tool: OFF"
+        autoToolButton.BackgroundColor3 = autoToolEnabled and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
+        
+        if autoToolEnabled and selectedTool then
+            equipTool(selectedTool)
+        end
+    end)
+    
+    -- Оновити список
+    refreshToolsButton.MouseButton1Click:Connect(function()
+        updateToolList()
+    end)
+    
+    -- Автоматичне екіпування
+    task.spawn(function()
+        while wait(0.5) do
+            if autoToolEnabled and selectedTool then
+                local equipped = false
+                if player.Character then
+                    for _, tool in pairs(player.Character:GetChildren()) do
+                        if tool:IsA("Tool") and tool.Name == selectedTool.Name then
+                            equipped = true
+                            break
+                        end
+                    end
+                end
+                
+                if not equipped then
+                    equipTool(selectedTool)
+                end
+            end
+        end
+    end)
+    
+    -- Ініціалізація
+    wait(0.5)
+    updateToolList()
+end
+
 -- Initialize all modules
 wait()
 createSettings()
